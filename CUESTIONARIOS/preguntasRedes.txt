@@ -1,0 +1,60 @@
+1.¿Qué hace S = new DatagramSocket(5000)?
+
+    a Udp port(5000)  -  ESTA (Si fuese ""S = new ServerSocket(5000)"" seria Tcp port(5000))
+    b Tcp port(5000)
+    c Udp port efimero
+    d Tcp port efimero
+
+1.2.¿Qué hace S = new DatagramSocket()?
+
+    a Udp port(5000) 
+    b Tcp port(5000)
+    c Udp port efimero  -  ESTA
+    d Tcp port efimero
+
+-----------------------------------------------------
+
+
+2. A que error iría esta: ""HTTP GET /index.html""
+
+    a HTTP/1.0 400 Bad Request - ESTA 
+    b
+    c
+    d
+
+-----------------------------------------------------
+
+3. ¿Qué es lo primero que lee/procesa una petición?
+
+    a Http 200 ok  - ESTA
+    b last modified
+    c 
+    d GET
+
+4. IneetAddres.getByName() ¿?
+
+    a string "localhost" ---> tipo de dato que representa ip
+    b
+    c
+    d
+
+5. Con al petición GETFIC fic.png, que content type devuelve
+
+    a  html/txt   - este
+    b  png
+    c
+    d
+
+6. Que metodo de la clase ServerThread se utiliza en el server tcp.
+
+    a Sthread.start()
+    b
+    c
+    d
+
+7. cual de las siguientes opciones se usaron en la practica 1
+
+    a server 
+    b completed
+    c 
+    d

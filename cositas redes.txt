@@ -1,0 +1,450 @@
+para crear path:
+
+Path p = Paths.get(" ruta " )
+
+-----------------------------------------------------
+
+DateFormat d = new SimpleDataFormat+(" ")
+
+"EEE, dd mm yyyy HH:mm:ss z"
+--------------------------------------------------------------------------
+TEMA 2
+
+Transporte y aplicacion -> extremo a extremo
+Red -> salto a salto
+
+Concentradores, conmutadores y puentes operan a nivel fisico y de enlace
+
+Loopback -> opera con los datagramas que tengan como destino la propia maquina
+
+IPs:
+	-Unicast
+	-Multicast
+	-Broadcast
+
+Broadcast y multicast solo en UDP
+
+Servidores -> puertos fijos
+Clientes -> puertos efimeros
+-------------------------------------------------------------------------
+TEMA 3
+
+HTTP utiliza TCP. define como los clientes solicitan informacion
+y como el servidor la proporciona
+
+Es un protocolo sin estado (no almacena informacion anterior)
+
+Sin pipeline: el cliente envia una peticion al recibir la respuesta previa
+
+Con pipeline: el cliente realiza una peticion al encontrar una nueva refencia (no espera la respuesta anterior)
+
+SMTP establece una conexion TCP
+
+SMTP -> oferta
+HTTP -> demanda
+-----------------------------------------------------------------------------
+TEMA 4
+
+DNS se implementa sobre UDP, aunque tambien podria ser sobre TCP
+
+Cada maquina tiene un cliente DNS, al que le preguntan para averiguar una IP
+
+DNS es una base de datos distribuida, no hai un unico servidor con todas las traducciones,
+hai muchos organizados preguntando a otros servidores
+
+Consultas recursivas
+	El servidor DNS hara todo el trabajo posible para devolver la respuesta completa,
+	lo que puede implicar multiples transacciones con otros servidores DNS (no es obligatorio
+	soportar estas consultas)
+
+Consultas no recursivas
+	Si el servidor DNS tiene la respuesta, la devuelve, sino devuelve informacion util pero sin
+	hacer peticiones adicionales a otros DNS. Los servidores raiz y TLD no son recursivos
+
+Los servidores DNS incorporan caches con un TTL de varios dias, almacenando tambien peticiones incorrectas
+La cache se empieza a incorporar ahora en ambos extremos, cliente y servidor
+
+Servidores de forwarding -> reenvian consultas a otro DNS (consultas recursivas) y almacenan respuestas en cache
+
+nslookup y dig -> peticiones estandar al servidor DNS por defecto (pueden especificar otras peticiones)
+bind -> el mas utilizado, incluido en linux
+
+P2P no se basa en pares, ambos extremos consumen y proporcionan un servicio
+	No son propiedad de un proveedor, se conectan intermitentemente y proporcionan
+	acceso a parte de tus recursos (esto provoca poca seguridad)
+------------------------------------------------------------------------------------------
+TEMA 5
+
+UDP
+
+cada bloque de datos de la capa aplicacion produce un unico datagrama UDP
+No garantiza que el datagrama alcance su destino
+Realiza comprobacion de errores pero no hace:
+	Control de flujo
+	Control de congestion
+	Retransmision de datos perdidos
+	Conexion/desconexion
+
+Se usa cuando:
+	medio fiable y sin congestion
+	aplicacion en tiempo real (no se pueden esperar ACKs)
+	mensajes regulares (no importa si se pierde alguno)
+	broadcast o multicast
+
+Longitud minima de 8 bytes, checksum es obligatorio
+
+TCP
+
+Envio fiable orientado a conexion (broadcast y multicast no aplicables)
+Los paquetes se denominan segmentos
+La comunicacion es bidireccional y simultanea
+
+Funciones TCP:
+	Establecer y terminar conexiones
+	Control de flujo
+	Multiplexar a nivel de aplicacion
+	Controlar errores, retransmitir segmentos perdidos y eliminar duplicados
+	Control de congestion
+
+Implementa:
+	Divide datos de la aplicacion en los segmentos mas adecuados
+	Temporizador con los segmentos -> si no recibe el ACK a tiempo retransmite el segmento
+	Checksum para comprobar el segmento recibido, no envia ACK si el segmento es invalido
+	Reordena los segmentos si es necesario para pasarlos ordenados a la aplicacion
+	Descarta duplicados
+	Control de flujo
+
+MTU -> nº max de bytes de datos que se puede enviar a nivel de enlace
+
+MSS -> nº max de bytes de datos que quiere recibir cada extremo
+	(si no se declara es 536 -> 576 - 20 cabecera IP - 20 cabecera TCP)
+
+TIME_WAIT ->	TCP espera 2 veces el tiempo max de un paquete en la red
+		Permite a TCP enviar el ACK en caso de haberse perdido
+
+FIN_WAIT_2 ->	Permanece en este estado hasta recibir FIN del otro extremo
+		El otro extremo esta en estado CLOSE_WAIT
+		Se establece un tiempo de espera para evitar espera infinita
+
+RST ->		Intento de conexion a un puerto inexistente
+		Respuesta ante una conexion semi-abierta
+------------------------------------------------------------------------------------------------------------
+TEMA 6
+
+Si el canal puede corromper datos (sin alterar el orden ni perder datos) necesito:
+	Deteccion de errores en el receptor (Checksum)
+	Confirmacion del receptor (ACK)
+	Retransmision del emisor si un paquete no se recibio correctamente
+	Nº de secuencia para identificar los paquetes
+
+Estos protocolos se denominan ARQ
+
+Tiempo de espera?:
+	Idealmente el tiempo de ida y vuelta de un paquete + un extra de procesamiento
+	Si espero demasiado -> tardo en recuperarme del error
+	Si espero poco -> envio muchos datos repetidos para nada
+
+Protocolo de parada y espera:
+	El emisor no envia datos hasta confirmar que el receptor ha recibido los anteriores
+	Rendimiento bajo
+	Solucion -> enviar varios paquetes sin esperar confirmacion (procesamiento en cadena)
+	Necesito:
+		Aumentar el tamaño de los nº de secuencia
+		El emisor necesita un buffer para almacenar datos transmitidos y no confirmados
+		El receptor necesita un buffer para paquetes recibidos correctamente
+
+ARQ retroceder N:
+	Max de N paquetes enviados sin confirmacion
+	Cada vez que se recibe un ACK se puede enviar otro paquete -> ventana deslizante
+	Receptor sin buffer
+	ACKs positivos y acumulativos
+Problema:
+	Un error en un paquete hace que se repitan muchos correctos
+Solucion -> El emisor retransmite solo los erroneos:
+	ACKs individuales
+	Ventana pero con algunos paquetes confirmados
+	Receptor necesita buffer
+	Temporizador para cada paquete
+============================================
+Intercambio TCP
+	Interactivo -> muchos segmentos de poco tamaño
+	No interactivo -> segmentos de gran tamaño
+
+Se basa en el modelo ventana deslizante con algunos matices:
+	El receptor almacena paquetes fuera de orden en un buffer y manda un ACK del ultimo correcto
+	Si el emisor recibe 3 ACKs repetidos retransmite el siguiente paquete
+
+Flujo de datos interactivo
+	ACKs retardados -> ACK + eco en un unico datagrama
+	TCP envia cada ciclo de reloj de 200ms para ver si hai datos que mandar con el ACK
+
+El trafico interactivo genera gran cantidad de paquetes enanos -> algoritmo de neagle
+
+Flujo de datos no interactivos -> problema del control de flujo (un emisor rapido satura un receptor lento)
+
+Control de flujo:
+	Ventana ofrecida: nº de bytes que el receptor puede recibir (win)
+	Ventana utilizable: nº de bytes que se pueden enviar (win - [sig. byte a enviar - ultimo ACK])
+
+Si se pierde el paquete de actualizacion de ventana se entra en un abrazo mortal -> Sol: Temporizador de persistencia
+	Despues de un tiempo, se pregunta periodicamente si la ventana se ha actualizado (window probes)
+	El temporizador se activa  siguiendo un exponential backoff
+	Se continua transmitiendo hasta que:
+		Se abra la ventana
+		Se cierre la conexion TCP
+
+Control de congestion
+	En un entorno con routers el control de flujo no es suficiente
+	Se establece un umbral de inicio lento:
+		-Por debajo del umbral la velocidad a la que se envian paquetes nuevos
+		 es la misma a la que se reciben los ACKs en el otro extremo
+		-Por encima, se aplica crecimiento suavizado
+	Si se pierde un paquete:
+		Saturacion del router
+		Error en el paquete (menos del 1%)
+	Identificar un problema de congestion:
+		Tiemeout de retransmision vencido
+		ACKs duplicados
+	Que hacer si algo falla:
+		Retransmitir
+		Reducir la velocidad de retransmision
+
+El temporizador de keepalive mantiene la conexion activa, permitiendo liberar recursos al otro extremo
+Despues de 2h de inactividad, el servidor mandará una sonda keepalive
+----------------------------------------------------------------------------------------------
+TEMA 7
+
+IP -> Servicio de entrega no fiable y no orientado a conexion
+
+No fiable:
+	No hai garantia de que un datagrama alcance su destino final
+	IP lo hara "lo mejor que pueda"
+	Si hai problema, IP descartará algun datagrama
+
+No orientado a conexion:
+	No mantiene informacion del estado de los datagramas
+	Cada datagrama se trata independientemente
+	Los datagramas se pueden desordenar
+
+DHCP -> permite asignar IPs dinámicas a los hosts durante tiempo limitado
+Se basa en el modelo cliente - servidor
+
+Asignaciones:
+	Estatica/Manual -> IP a una maquina concreta (basada en su MAC)
+	Dinamica -> rango de IPs
+	Automatica -> similar a dinamica, pero un equipo obtiene siempre la misma IP
+
+Mensajes DHCP:
+	Discovery -> msg del cliente para descubrir lo servidores DHCP
+	Offer -> contiene la direccion IP que el servidor ofrece
+	Request -> el cliente selecciona una IP de las ofertadas
+	ACK -> el servidor confirma la solicitud
+Si el cliente no tiene IP, los mensajes Request y Discovery se mandan por broadcast
+
+Si no hai DHCP un equipo se autoasigna una IP (direccion link-local):
+	Se escoge una IP dentro del rango
+	Se comprueba mediante ARP que no esta siendo usada
+	Cuando consigue una IP, deja de usar la autoasignada
+
+NAT -> usada para que dispositivos de redes privadas puedan comunicarse con el exterior
+
+Modifica la IP origen y/o destino de un datagrama IP al pasar a través de un router
+	PAT -> Multiples maquinas de una red privada acceden a Internet usando la misma IP publica
+	Basic NAT -> cada IP privada tiene asignada una IP pública
+
+NAT ofrece seguridad, ya que no se permiten conexiones bidireccionales
+---------------------------------------------------------------------------------------------------------------------
+TEMA 8 
+
+El enrutamiento IP se hace salto a salto:
+	Si el destino esta directamente conectado, se envia el datagrama, sino se envia al router por defecto
+	IP no conoce cual es la ruta completa al destino, solo conoce el siguiente router en el camino
+----------------------------------------------------------------------------------------------------------------------
+TEMA 9 
+
+Mensajes ICMP:
+	Ping
+	Destino inalcanzable:
+		Puerto inalcanzable -> Usado por UDP
+		Maquina/red inalcanzable -> router cuando no puede enviar datagrama IP
+	Redirect
+	Fragmentacion requerida
+	Tiempo excedido
+
+Traceroute -> permite ver la ruta que sigue un datagrama hasta su destino
+Se basa en datagramas UDP, campo TTL y mensajes ICMP
+
+Fragmentacion IP
+	Si la longitud del datagrama es mayor al MTU, se fragmenta
+	El reensamblado se hace cuando los datagramas alcanzan el destino final
+		IP en el destino
+		Fragmentacion transparente a nivel de transporte
+	Offset de fragmento -> desplazamiento en multiplos de 8bytes
+
+El tamaño de cada fragmento debe ser multiplo de 8, menos el ultimo		 
+
+Path MTU discovery
+	Permite averiguar el MTU minimo y reducir la fragmentacion IP
+	Solo en el host origen
+
+Se habilita el bit DF (dont fragment) ->
+-> Si algun router necesita fragmentar generará el mensaje ICMP fragmentacion requerida ->
+-> Si se recibe el mensaje y eran datos TPC -> se reduce el tam de segmento en base al nuevo MTU ->
+-> Sino IP framgenta el datagrama en base al nuevo MTU
+-------------------------------------------------------------------------------------------
+TEMA 10
+
+IPv6
+
+Direcciones de 128 bits
+
+Autoconfiguracion
+
+Mejora del multicast -> introduccion del anycast
+
+Simplificacion de la cabecera -> tam fijo de 40 bits
+
+Añade cabeceras de extension
+
+Seguridad -> soporta autenticacion + integridad y confidencialidad de los datos
+
+Etiquetado de flujos -> etiqueta los paquetes que requieren un tratamiento similar
+
+Se eliminan 5 campos de IPv4:
+	Longitud cabecera
+	Identificacion, flags y offset de fragmentacion (en IPv6 los routers no fragmentan)
+	Checksum cabecera
+
+Direcciones -> 8 bloques de 16 bytes -> 3 tipos
+	Unicast -> identifica una interfaz		
+	Mullticast -> identifica un grupo de inferfaces
+	Anycast -> se asigna a multiples interfaces (se envia a solo una de esas)
+
+Transicion IPv4 a IPv6:
+	Pila dual -> Permite a ambas coexistir 
+	Tunneling -> permite transportar trafico IPv6 mediante estructuras IPv4
+	NAT -> permite a nodos IPv6 comunicarse con nodos IPv4 (traduce una direccion IPv6 a una IPv4)
+------------------------------------------------------------------------------------
+TEMA 11
+
+TCPIP y nivel de enlace
+
+ARP -> correspondencia entre IPs y direcciones MAC
+
+Implementa una cache ARP
+-----------------------------------------------------------------------------------
+TEMA 12
+
+Tecnologias a nivel de enlace
+
+CSMA -> una estacion escucha al medio antes de transmitir
+	Ocupado -> espera
+	Libre -> transmite
+
+Si dos estaciones intentan transmitir al mismo tiempo hai una colision -> es necesaria la confirmacion del receptor
+
+CSMA/CD -> con CSMA, al colisionar 2 tramas el medio se quedaba inutilizado ese tiempo
+Con CD, continuo escuchando el medio durante la transmision -> no necesito confirmacion:
+	Libre -> transmite
+	Ocupado -> continuar escuchando hasta estar libre -> transmite
+	Colision durante transmision -> transmite una señal corta y corta la transmision
+	Se espera un tiempo aleatorio y se intenta transmitir de nuevo
+		Tras cada colision aumenta el tiempo
+		Tras N intentos no se transmite mas -> msg de error
+
+El tiempo en detectar una colision es <= dos veces el retardo de propagacion
+Una trama debe ser suficientemente larga para detectar colision antes de acabar su transmision -> tam minimo 64 bytes
+=============================================0
+Wi-Fi
+
+BSS -> grupo de estaciones que se comunican entre si
+	Intependiente -> se comunican directamente
+	Infraestructura -> usan un punto de acceso
+
+ESS -> asociacion de BSSs
+
+Un equipo debe asociarse con un punto de acceso (PA), que envian tramas baliza periodicamente:
+	Exploracion pasiva -> el equipo espera a recibir las tramas
+	Exploracion activa -> solicita a los PA que se identifiquen
+Seguridad:
+	Filtrado MAC
+	Login y password
+Configuracion IP y DHCP
+
+El equipo puede ya transmitir y recibir tramas del PA, pero tenemos el problema del acceso multiple -> CSMA/CA
+
+CSMA/CA:
+	Cuando una estacion transmita, transmite la trama completa
+	Necesita un ACK de confirmacion
+
+RTS/CTS:
+	Cuando un emisor quiere transmitir, manda un RTS con el tiempo total que necesita
+	El PA responde con un CTS con el tiempo restante que tiene reservado
+
+Ventajas:
+	Una trama solo se enviará tras reservar el canal
+	Colision sobre RTS o CTS (tramas cortas)
+Desventajas:
+	Introduce un retardo
+
+Seguridad:
+	El aire es un medio sensible a escuchas -> WEP, WPA, WPA2, WPA37
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
